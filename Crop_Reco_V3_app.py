@@ -146,9 +146,7 @@ with left:
 	st.markdown('<div class="muted">Enter the readings in the panel, then let your conditions guide the next planting.</div>', unsafe_allow_html=True)
 	st.write("")
 	info_a, info_b, info_c = st.columns(3)
-	info_a.metric("Inputs", f"{len(feature_names)} readings")
-	info_b.metric("Approach", "Field-aware")
-	info_c.metric("Made for", "Better harvests")
+	
 with right:
 	st.image(
 		"https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=1000&q=85",
@@ -183,10 +181,18 @@ if predict:
 					key=lambda item: item[1],
 					reverse=True,
 				)[:3]
-				st.markdown("### Other promising options")
-				rank_cols = st.columns(len(rankings))
-				for column, (crop, score) in zip(rank_cols, rankings):
-					column.metric(str(crop).capitalize(), f"{score:.0%} match")
+				if len(rankings) > 1:
+					st.markdown("### 2nd and 3rd best crop recommendations")
+					next_best = rankings[1:]
+					rank_cols = st.columns(len(next_best))
+					for rank, (column, (crop, score)) in enumerate(
+						zip(rank_cols, next_best),
+						start=2,
+					):
+						column.metric(
+							f"{rank}{'nd' if rank == 2 else 'rd'} best: {str(crop).capitalize()}",
+							f"{score:.1%} probability",
+						)
 	except Exception as exc:
 		st.error(f"Prediction could not be completed. Check that the model accepts these inputs. Details: {exc}")
 
