@@ -62,6 +62,7 @@ def feature_defaults(name):
 
 
 model_path = Path(__file__).resolve().parent / "best_crop_model.pkl"
+soil_encoder_path = Path(__file__).resolve().parent / "soil_encoder.pkl"
 
 with st.sidebar:
 	st.markdown("## 🌿 Field settings")
@@ -80,17 +81,41 @@ with st.sidebar:
 	feature_names = list(model_features) if model_features is not None else [
 		"N", "P", "K", "temperature", "humidity", "ph", "rainfall"
 	]
+	soil_feature = next(
+		(feature for feature in feature_names if str(feature).strip().lower() == "soil_type"),
+		None,
+	)
+	soil_encoder = None
+	if soil_feature is not None:
+		if not soil_encoder_path.exists():
+			st.error("Soil encoder file not found")
+			st.code(str(soil_encoder_path), language=None)
+			st.stop()
+		try:
+			soil_encoder = load_model(str(soil_encoder_path))
+		except Exception as exc:
+			st.error(f"Could not load the soil encoder: {exc}")
+			st.stop()
+
 	st.markdown("### Your field readings")
 	st.caption("Values are pre-filled with sensible starting points. Adjust them to match your field.")
 	values = {}
 	columns = st.columns(2)
 	for index, feature in enumerate(feature_names):
-		low, high, step, default = feature_defaults(feature)
 		with columns[index % 2]:
-			values[feature] = st.number_input(
-				str(feature).replace("_", " ").title(), min_value=low, max_value=high,
-				value=default, step=step, key=f"field_{index}",
-			)
+			if feature == soil_feature:
+				soil_type = st.selectbox(
+					"Soil Type",
+					options=list(soil_encoder.classes_),
+					key=f"field_{index}",
+				)
+				values[feature] = soil_encoder.transform([soil_type])[0]
+			else:
+				low, high, step, default = feature_defaults(feature)
+				values[feature] = st.number_input(
+					str(feature).replace("_", " ").title(), min_value=low, max_value=high,
+					value=default, step=step, key=f"field_{index}",
+				)
 	predict = st.button("🌱  Find my best crop", type="primary", use_container_width=True)
 
 st.markdown(
