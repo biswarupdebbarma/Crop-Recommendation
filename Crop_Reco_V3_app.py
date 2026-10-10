@@ -41,10 +41,10 @@ st.markdown(
 
 
 @st.cache_resource
-def load_model(model_path):
+def load_artifact(artifact_path):
 	import joblib
 
-	return joblib.load(model_path)
+	return joblib.load(artifact_path)
 
 
 def feature_defaults(name):
@@ -62,25 +62,35 @@ def feature_defaults(name):
 
 
 model_path = Path(__file__).resolve().parent / "best_crop_model.pkl"
+feature_columns_path = Path(__file__).resolve().parent / "feature_columns.pkl"
+label_encoder_path = Path(__file__).resolve().parent / "label_encoder.pkl"
+scaler_path = Path(__file__).resolve().parent / "scaler.pkl"
 soil_encoder_path = Path(__file__).resolve().parent / "soil_encoder.pkl"
 
 with st.sidebar:
 	st.markdown("## 🌿 Field settings")
 	st.caption("Add your current soil and climate readings to find a suitable crop.")
-	if not model_path.exists():
-		st.error("Model file not found")
-		st.code(str(model_path), language=None)
-		st.stop()
+	artifact_paths = {
+		"Crop model": model_path,
+		"Feature columns": feature_columns_path,
+		"Crop label encoder": label_encoder_path,
+		"Feature scaler": scaler_path,
+	}
+	for artifact_name, artifact_path in artifact_paths.items():
+		if not artifact_path.exists():
+			st.error(f"{artifact_name} file not found")
+			st.code(str(artifact_path), language=None)
+			st.stop()
 	try:
-		model = load_model(str(model_path))
+		model = load_artifact(str(model_path))
+		feature_names = load_artifact(str(feature_columns_path))
+		label_encoder = load_artifact(str(label_encoder_path))
+		scaler = load_artifact(str(scaler_path))
 	except Exception as exc:
-		st.error(f"Could not load the crop model: {exc}")
+		st.error(f"Could not load the crop prediction artifacts: {exc}")
 		st.stop()
 
-	model_features = getattr(model, "feature_names_in_", None)
-	feature_names = list(model_features) if model_features is not None else [
-		"N", "P", "K", "temperature", "humidity", "ph", "rainfall"
-	]
+	feature_names = list(feature_names)
 	soil_feature = next(
 		(feature for feature in feature_names if str(feature).strip().lower() == "soil_type"),
 		None,
@@ -92,7 +102,7 @@ with st.sidebar:
 			st.code(str(soil_encoder_path), language=None)
 			st.stop()
 		try:
-			soil_encoder = load_model(str(soil_encoder_path))
+			soil_encoder = load_artifact(str(soil_encoder_path))
 		except Exception as exc:
 			st.error(f"Could not load the soil encoder: {exc}")
 			st.stop()
@@ -149,7 +159,11 @@ with right:
 if predict:
 	try:
 		input_frame = pd.DataFrame([[values[name] for name in feature_names]], columns=feature_names)
-		prediction = model.predict(input_frame)[0]
+		scaled_input = pd.DataFrame(
+			scaler.transform(input_frame),
+			columns=feature_names,
+		)
+		prediction = label_encoder.inverse_transform(model.predict(scaled_input))[0]
 		st.divider()
 		st.markdown('<div class="section-title">Your crop match</div>', unsafe_allow_html=True)
 		st.markdown(
@@ -160,10 +174,15 @@ if predict:
 		)
 
 		if hasattr(model, "predict_proba"):
-			probabilities = model.predict_proba(input_frame)[0]
+			probabilities = model.predict_proba(scaled_input)[0]
 			classes = getattr(model, "classes_", None)
 			if classes is not None:
-				rankings = sorted(zip(classes, probabilities), key=lambda item: item[1], reverse=True)[:3]
+				crop_names = label_encoder.inverse_transform(classes)
+				rankings = sorted(
+					zip(crop_names, probabilities),
+					key=lambda item: item[1],
+					reverse=True,
+				)[:3]
 				st.markdown("### Other promising options")
 				rank_cols = st.columns(len(rankings))
 				for column, (crop, score) in zip(rank_cols, rankings):
