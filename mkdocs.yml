@@ -1,0 +1,23 @@
+site_name: Crop Recommendation v3
+nav:
+  - Home: index.md
+  - Data: data.md
+  - Model Workflow: model-workflow.md
+theme:
+  name: material
+markdown_extensions:
+  - toc:
+      permalink: True
+  - admonition
+  - codehilite
+  - footnotes
+  - tables
+  - def_list
+  - attr_list
+  - smarty
+  - markdown_include.include: 
+      base_path: docs
+      include: 
+        - index.md
+        - data.md
+        - model-workflow.md
