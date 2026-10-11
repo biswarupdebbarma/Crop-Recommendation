@@ -5,7 +5,7 @@ import streamlit as st
 
 
 st.set_page_config(
-	page_title="Verdant | Crop Advisor",
+	page_title="Biswarup | Crop Advisor",
 	page_icon="🌱",
 	layout="wide",
 	initial_sidebar_state="expanded",
@@ -196,4 +196,4 @@ if predict:
 	except Exception as exc:
 		st.error(f"Prediction could not be completed. Check that the model accepts these inputs. Details: {exc}")
 
-st.markdown("<br><div style='text-align:center;color:#829188;font-size:.82rem'>VERDANT · CROP ADVISOR</div>", unsafe_allow_html=True)
+st.markdown("<br><div style='text-align:center;color:#829188;font-size:.82rem'>BISWARUP · CROP ADVISOR</div>", unsafe_allow_html=True)
